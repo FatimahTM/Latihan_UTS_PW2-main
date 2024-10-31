@@ -1,1 +1,229 @@
 npx create-react-app event-registration-app --legacy-peer-deps
+
+Berikut adalah langkah-langkah dan perintah untuk membuat API di Laravel dan proyek React untuk mengakses API tersebut.
+
+### Bagian 1: Membuat API di Laravel
+
+#### 1. Persiapan Proyek Laravel
+
+- **Instal Laravel**: Jika Anda belum menginstal Laravel, gunakan Composer untuk membuat proyek baru.
+  ```bash
+  composer create-project --prefer-dist laravel/laravel registrasi-event-olahraga
+  ```
+
+- **Masuk ke Direktori Proyek**:
+  ```bash
+  cd registrasi-event-olahraga
+  ```
+
+#### 2. Buat Tabel dengan Migrasi
+
+- **Buat Migrasi**:
+  ```bash
+  php artisan make:migration create_event_registrations_table
+  ```
+
+- **Edit File Migrasi** di `database/migrations/<timestamp>_create_event_registrations_table.php`:
+  ```php
+  public function up()
+  {
+      Schema::create('event_registrations', function (Blueprint $table) {
+          $table->id();
+          $table->string('participant_name');
+          $table->string('event_name');
+          $table->date('event_date');
+          $table->string('registration_number')->unique();
+          $table->string('category');
+          $table->timestamps();
+      });
+  }
+  ```
+
+- **Jalankan Migrasi**:
+  ```bash
+  php artisan migrate
+  ```
+
+#### 3. Buat Model
+
+- **Buat Model untuk Event Registration**:
+  ```bash
+  php artisan make:model EventRegistration
+  ```
+
+#### 4. Buat Controller
+
+- **Buat Controller untuk API**:
+  ```bash
+  php artisan make:controller EventRegistrationController --api
+  ```
+
+- **Edit `EventRegistrationController`** di `app/Http/Controllers/EventRegistrationController.php`:
+  ```php
+  use App\Models\EventRegistration;
+  use Illuminate\Http\Request;
+
+  class EventRegistrationController extends Controller
+  {
+      public function index()
+      {
+          $registrations = EventRegistration::all();
+          return response()->json([
+              'code' => 200,
+              'message' => 'Success',
+              'data' => $registrations
+          ]);
+      }
+
+      public function store(Request $request)
+      {
+          $request->validate([
+              'participant_name' => 'required|string|max:255',
+              'event_name' => 'required|string|max:255',
+              'event_date' => 'required|date',
+              'registration_number' => 'required|string|unique:event_registrations',
+              'category' => 'required|string|max:255',
+          ]);
+
+          EventRegistration::create($request->all());
+
+          return response()->json([
+              'code' => 200,
+              'message' => 'Success'
+          ]);
+      }
+  }
+  ```
+
+#### 5. Buat Route API
+
+- **Edit File Route** di `routes/api.php`:
+  ```php
+  use App\Http\Controllers\EventRegistrationController;
+
+  Route::get('/event-registrations', [EventRegistrationController::class, 'index']);
+  Route::post('/event-registrations', [EventRegistrationController::class, 'store']);
+  ```
+
+#### 6. Jalankan Server Laravel
+
+- **Jalankan Laravel**:
+  ```bash
+  php artisan serve
+  ```
+
+- Akses API di: `http://localhost:8000/api/event-registrations`
+
+### Bagian 2: Membuat Proyek React
+
+#### 1. Buat Proyek React
+
+- **Buka Terminal dan Masuk ke Folder yang Dikehendaki**:
+  ```bash
+  cd C:\utsif31pw2\PW2latihanUTSlagi
+  ```
+
+- **Buat Proyek React**:
+  ```bash
+  npx create-react-app event-registration-app
+  ```
+
+#### 2. Masuk ke Direktori Proyek React
+
+```bash
+cd event-registration-app
+```
+
+#### 3. Instal Axios untuk Mengakses API
+
+```bash
+npm install axios
+```
+
+#### 4. Buat Komponen untuk Menampilkan dan Menambah Data
+
+- **Buat Folder Komponen**:
+  ```bash
+  mkdir src/components
+  ```
+
+- **Buat File `EventRegistration.js`** di `src/components/EventRegistration.js`:
+  ```javascript
+  import React, { useState, useEffect } from 'react';
+  import axios from 'axios';
+
+  const EventRegistration = () => {
+      const [registrations, setRegistrations] = useState([]);
+      const [formData, setFormData] = useState({
+          participant_name: '',
+          event_name: '',
+          event_date: '',
+          registration_number: '',
+          category: ''
+      });
+
+      const fetchRegistrations = async () => {
+          const response = await axios.get('http://localhost:8000/api/event-registrations');
+          setRegistrations(response.data.data);
+      };
+
+      const handleSubmit = async (e) => {
+          e.preventDefault();
+          await axios.post('http://localhost:8000/api/event-registrations', formData);
+          fetchRegistrations();
+      };
+
+      useEffect(() => {
+          fetchRegistrations();
+      }, []);
+
+      return (
+          <div>
+              <h1>Event Registrations</h1>
+              <form onSubmit={handleSubmit}>
+                  <input type="text" placeholder="Participant Name" onChange={(e) => setFormData({...formData, participant_name: e.target.value})} />
+                  <input type="text" placeholder="Event Name" onChange={(e) => setFormData({...formData, event_name: e.target.value})} />
+                  <input type="date" onChange={(e) => setFormData({...formData, event_date: e.target.value})} />
+                  <input type="text" placeholder="Registration Number" onChange={(e) => setFormData({...formData, registration_number: e.target.value})} />
+                  <input type="text" placeholder="Category" onChange={(e) => setFormData({...formData, category: e.target.value})} />
+                  <button type="submit">Register</button>
+              </form>
+              <ul>
+                  {registrations.map(reg => (
+                      <li key={reg.id}>{reg.participant_name} - {reg.event_name}</li>
+                  ))}
+              </ul>
+          </div>
+      );
+  };
+
+  export default EventRegistration;
+  ```
+
+#### 5. Update `src/App.js`
+
+- **Import dan Gunakan Komponen**:
+  ```javascript
+  import React from 'react';
+  import EventRegistration from './components/EventRegistration';
+
+  function App() {
+      return (
+          <div className="App">
+              <EventRegistration />
+          </div>
+      );
+  }
+
+  export default App;
+  ```
+
+#### 6. Jalankan Aplikasi React
+
+```bash
+npm start
+```
+
+### Ringkasan
+
+Dengan langkah-langkah di atas, Anda telah berhasil membuat API di Laravel dan aplikasi React untuk mengakses API tersebut. Anda dapat menggunakan Postman untuk menguji API Laravel, dan aplikasi React untuk menampilkan dan menambahkan data ke API. Jika Anda memiliki pertanyaan lebih lanjut atau mengalami masalah, jangan ragu untuk bertanya!
